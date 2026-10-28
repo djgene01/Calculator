@@ -178,4 +178,52 @@ public class CalculatorEngineTests
         vm.ClearCommand.Execute(null);
         Assert.Equal("0", vm.Display);
     }
+
+    // --- review regressions (found by independent code review) ------------
+
+    [Fact]
+    public void HistoryLabelShowsCompletedOperationAfterEquals()
+    {
+        // 5 + 3 = 8 ; the history line must read "5 + 3 =" (not "0 + 3 =")
+        var vm = NewVm();
+        vm.Digit5Command.Execute(null);
+        vm.AddCommand.Execute(null);
+        vm.Digit3Command.Execute(null);
+        vm.EqualsCommand.Execute(null);
+        Assert.Equal("8", vm.Display);
+        Assert.Equal("5 + 3 =", vm.HistoryLabel);
+    }
+
+    [Fact]
+    public void DigitEntryAfterEqualsDisarmsRepeatEquals()
+    {
+        // 5 + 3 = 8, then typing 2 starts a NEW operand; '=' must NOT compute 2 + 3
+        var vm = NewVm();
+        vm.Digit5Command.Execute(null);
+        vm.AddCommand.Execute(null);
+        vm.Digit3Command.Execute(null);
+        vm.EqualsCommand.Execute(null);
+        Assert.Equal("8", vm.Display);
+        vm.Digit2Command.Execute(null);          // fresh operand -> repeat must be disarmed
+        Assert.Equal("2", vm.Display);
+        Assert.Equal("", vm.HistoryLabel);       // no stale repeat context
+        vm.EqualsCommand.Execute(null);          // no pending op -> just confirms "2"
+        Assert.Equal("2", vm.Display);
+    }
+
+    [Fact]
+    public void RepeatEqualsStillWorksWhenNoNewOperandEntered()
+    {
+        // Guards the fix: disarming repeat on digit entry must not break plain " =" repeats
+        var vm = NewVm();
+        vm.Digit5Command.Execute(null);
+        vm.AddCommand.Execute(null);
+        vm.Digit3Command.Execute(null);
+        vm.EqualsCommand.Execute(null);
+        Assert.Equal("8", vm.Display);
+        vm.EqualsCommand.Execute(null);
+        Assert.Equal("11", vm.Display);
+        vm.EqualsCommand.Execute(null);
+        Assert.Equal("14", vm.Display);
+    }
 }

@@ -15,6 +15,7 @@ public sealed class CalculatorEngine
     private bool _waitingForOperand;
     private char? _repeatOperator;   // last operator, used by repeated "="
     private double? _repeatOperand;   // last right-hand operand
+    private double? _repeatLeftOperand; // last left-hand operand, for the history label
     private bool _hasError;
 
     /// <summary>The text to show in the display.</summary>
@@ -29,7 +30,7 @@ public sealed class CalculatorEngine
             if (_firstOperand is not null && _pendingOperator is not null)
                 return $"{FormatNumber(_firstOperand.Value)} {_pendingOperator.Value}";
             if (_repeatOperator is not null && _repeatOperand is not null && _pendingOperator is null)
-                return $"{FormatNumber(_firstOperand ?? 0)} {_repeatOperator.Value} {FormatNumber(_repeatOperand.Value)} =";
+                return $"{FormatNumber(_repeatLeftOperand ?? 0)} {_repeatOperator.Value} {FormatNumber(_repeatOperand.Value)} =";
             return "";
         }
     }
@@ -46,6 +47,7 @@ public sealed class CalculatorEngine
         _waitingForOperand = false;
         _repeatOperator = null;
         _repeatOperand = null;
+        _repeatLeftOperand = null;
         _hasError = false;
     }
 
@@ -55,12 +57,14 @@ public sealed class CalculatorEngine
         if (_hasError) { Clear(); return; }
         _display = "0";
         _waitingForOperand = false;
+        ResetRepeatState();
     }
 
     /// <summary>Delete the last digit of the current entry.</summary>
     public void Backspace()
     {
         if (_hasError || _waitingForOperand) return;
+        ResetRepeatState();
         _display = _display.Length > 1 ? _display.Substring(0, _display.Length - 1) : "0";
         if (_display.Length == 0 || _display == "-") _display = "0";
     }
@@ -73,10 +77,12 @@ public sealed class CalculatorEngine
         {
             _display = digit == 0 ? "0" : digit.ToString();
             _waitingForOperand = false;
+            ResetRepeatState();
         }
         else if (_display == "0")
         {
             _display = digit.ToString();
+            ResetRepeatState();
         }
         else
         {
@@ -93,10 +99,12 @@ public sealed class CalculatorEngine
         {
             _display = "0.";
             _waitingForOperand = false;
+            ResetRepeatState();
         }
         else if (!_display.Contains('.'))
         {
             _display += ".";
+            ResetRepeatState();
         }
     }
 
@@ -124,8 +132,7 @@ public sealed class CalculatorEngine
 
         _pendingOperator = op;
         _waitingForOperand = true;
-        _repeatOperator = null;
-        _repeatOperand = null;
+        ResetRepeatState();
     }
 
     /// <summary>Resolve the pending operation, or repeat the previous one.</summary>
@@ -143,6 +150,7 @@ public sealed class CalculatorEngine
             }
             _repeatOperand = current;
             _repeatOperator = _pendingOperator;
+            _repeatLeftOperand = _firstOperand.Value; // remember for the history label
             _pendingOperator = null;
             _firstOperand = null;
             _display = FormatNumber(result);
@@ -171,6 +179,7 @@ public sealed class CalculatorEngine
         if (_hasError) return;
         _display = FormatNumber(ParseDisplay() / 100.0);
         _waitingForOperand = false;
+        ResetRepeatState();
     }
 
     /// <summary>Negate the current display.</summary>
@@ -181,9 +190,18 @@ public sealed class CalculatorEngine
         if (value == 0) return;
         _display = FormatNumber(-value);
         _waitingForOperand = false;
+        ResetRepeatState();
     }
 
     // ---- helpers ---------------------------------------------------------
+
+    /// <summary>Drop the "repeat =" memory; any fresh operand entry ends the repeat chain.</summary>
+    private void ResetRepeatState()
+    {
+        _repeatOperator = null;
+        _repeatOperand = null;
+        _repeatLeftOperand = null;
+    }
 
     private double ParseDisplay() =>
         double.TryParse(_display, System.Globalization.NumberStyles.Any,
@@ -225,8 +243,7 @@ public sealed class CalculatorEngine
         _firstOperand = null;
         _pendingOperator = null;
         _waitingForOperand = true;
-        _repeatOperator = null;
-        _repeatOperand = null;
+        ResetRepeatState();
     }
 
     private static string FormatNumber(double value)
