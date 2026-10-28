@@ -1,0 +1,8 @@
+{
+  "repo_name": "Calculator",
+  "source_path": "C:/Users/eugen/OneDrive/Documents/VLMWorkspaces/task-20261028-062553",
+  "source_sha": "42654e2af49a04a83557b51b7d94450987af8cd0",
+  "generated_at": "2026-10-28T07:40:00Z",
+  "generator": "hermes-agent code-wiki skill v0.1.0",
+  "modules_documented": ["engine", "view-model", "commands", "ui", "tests"]
+}
